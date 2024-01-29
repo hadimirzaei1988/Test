@@ -83,11 +83,18 @@ public:
          for(size_t i=0;i<size;i++){
            weightTmp+=lastWeightList[i];
          }
+         
      }
+     weightTmp=(double)(weightTmp/size);
+     std::cout<<"\nsize, mean " <<size<<"\t"<<weightTmp*weightTmp<<"\n";
      return weightTmp*weightTmp;
   }else
   {
-  return 0;
+  double max = *max_element(lastWeightList.begin(), lastWeightList.end());
+  double min = *min_element(lastWeightList.begin(), lastWeightList.end());
+  weightTmp=(min + max) * (min + max + 1) / 2 + max;
+  std::cout<<"\nmin max ,weightmp " <<min<<"\t"<<max<<"\t"<<weightTmp<<"\n";
+  return weightTmp ;
   }
   }
 
@@ -118,7 +125,10 @@ std::pair<double, double> play(const std::vector<uint32_t> &input_weights)
   boxes.emplace_back(Box::makeGreenBox(0.1));
   boxes.emplace_back(Box::makeBlueBox(0.2));
   boxes.emplace_back(Box::makeBlueBox(0.3));
-
+ 
+   std::vector<uint32_t> inputs{0,1,2,3,5};
+ boxes[0]->absorb(inputs[0]);
+ boxes[0]->absorb(inputs[1]);
   // TODO
   Player player_A,player_B;
   std::cout << "Scores: player A " << player_A.getScore() << ", player B "
