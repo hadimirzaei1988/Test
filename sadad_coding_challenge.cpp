@@ -48,13 +48,48 @@
 
 class Box
 {
+private:
+  
+     //Both are initialized with a given initial weight.so Delete the copy constructor and assignment operator
+      Box(){};
+      Box(const Box&) = delete;
+      Box& operator=(const Box&) = delete;
 public:
   explicit Box(double initial_weight) : weight_(initial_weight) {}
-  static std::unique_ptr<Box> makeGreenBox(double initial_weight);
-  static std::unique_ptr<Box> makeBlueBox(double initial_weight);
+  static std::unique_ptr<Box> makeGreenBox(double initial_weight){
+  	std::unique_ptr<Box> greenBox(new Box(initial_weight));
+ 	greenBox->isGreen=true;
+  return greenBox;
+  }
+  static std::unique_ptr<Box> makeBlueBox(double initial_weight){
+  	  std::unique_ptr<Box> blueBox(new Box(initial_weight));
+  	  blueBox->isGreen=false;
+   return blueBox;
+  }
   bool operator<(const Box &rhs) const { return weight_ < rhs.weight_; }
-
+  bool isGreen;//we have two types of Box green or blue
+  std::vector<double> lastWeightList;//keep all absorbed weight
   // TODO
+  double absorb(double newWeight){
+  lastWeightList.emplace_back(newWeight);
+  double weightTmp=0;//temperary weight
+  if(isGreen)
+  {
+     int size = lastWeightList.size();
+     if(size>3)//the square of the mean of the 3 weights that it most recently absorbed
+     {
+       weightTmp=(lastWeightList[size-1]+lastWeightList[size-2]+lastWeightList[size-3]);              
+     }else{//square of mean of all absorbed weights if there are fewer than 3
+         for(size_t i=0;i<size;i++){
+           weightTmp+=lastWeightList[i];
+         }
+     }
+     return weightTmp*weightTmp;
+  }else
+  {
+  return 0;
+  }
+  }
 
 protected:
   double weight_;
@@ -85,7 +120,7 @@ std::pair<double, double> play(const std::vector<uint32_t> &input_weights)
   boxes.emplace_back(Box::makeBlueBox(0.3));
 
   // TODO
-
+  Player player_A,player_B;
   std::cout << "Scores: player A " << player_A.getScore() << ", player B "
             << player_B.getScore() << std::endl;
   return std::make_pair(player_A.getScore(), player_B.getScore());
