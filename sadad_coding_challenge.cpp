@@ -14,6 +14,7 @@
  * - A blue box calculates the score as Cantor's pairing function of the smallest and largest weight that it has absorbed so far, i.e. pairing(smallest, largest), where pairing(0, 1) = 2
  * - The game is played with two green boxes with initial weights 0.0 and 0.1, and two blue boxes with initial weights 0.2 and 0.3.
  * - There is a list of input token weights. Each gets used in one turn.
+ 
  * - There are two players, A and B. Both start with a score of 0.
  * - The players take turns alternatingly. Player A starts.
  * - In each turn, the current player selects one of the boxes with the currently smallest weight, and lets it absorb the next input token weight. Each input weight gets only used once.
@@ -55,7 +56,9 @@ private:
       Box(const Box&) = delete;
       Box& operator=(const Box&) = delete;
 public:
-  explicit Box(double initial_weight) : weight_(initial_weight) {}
+  explicit Box(double initial_weight) : weight_(initial_weight) {
+  lastWeightList.emplace_back(initial_weight);
+  }
   static std::unique_ptr<Box> makeGreenBox(double initial_weight){
   	std::unique_ptr<Box> greenBox(new Box(initial_weight));
  	greenBox->isGreen=true;
@@ -69,35 +72,44 @@ public:
   bool operator<(const Box &rhs) const { return weight_ < rhs.weight_; }
   bool isGreen;//we have two types of Box green or blue
   std::vector<double> lastWeightList;//keep all absorbed weight
+
   // TODO
-  double absorb(double newWeight){
-  lastWeightList.emplace_back(newWeight);
-  double weightTmp=0;//temperary weight
+  double absorb(uint32_t newWeight){
+  
+  weight_+=newWeight;
+  lastWeightList.emplace_back(weight_);
+  double score=0;
   if(isGreen)
   {
      int size = lastWeightList.size();
-     if(size>3)//the square of the mean of the 3 weights that it most recently absorbed
+     if(size>=3)//the square of the mean of the 3 weights that it most recently absorbed
      {
-       weightTmp=(lastWeightList[size-1]+lastWeightList[size-2]+lastWeightList[size-3]);              
+       score=(lastWeightList[size-1]+lastWeightList[size-2]+lastWeightList[size-3]);              
      }else{//square of mean of all absorbed weights if there are fewer than 3
          for(size_t i=0;i<size;i++){
-           weightTmp+=lastWeightList[i];
+           score+=lastWeightList[i];
          }
          
      }
-     weightTmp=(double)(weightTmp/size);
-     std::cout<<"\nsize, mean " <<size<<"\t"<<weightTmp*weightTmp<<"\n";
-     return weightTmp*weightTmp;
+    
+     score=(double)(score/size);
+    
+     score=score*score;
+     std::cout<<"\ngreen\t"<<score<<"\n";
   }else
-  {
+  {//Cantor's pairing function of the smallest and largest weight 
   double max = *max_element(lastWeightList.begin(), lastWeightList.end());
   double min = *min_element(lastWeightList.begin(), lastWeightList.end());
-  weightTmp=(min + max) * (min + max + 1) / 2 + max;
-  std::cout<<"\nmin max ,weightmp " <<min<<"\t"<<max<<"\t"<<weightTmp<<"\n";
-  return weightTmp ;
-  }
+  score=(min + max) * (min + max + 1) / 2.0 + max;
+    std::cout<<"\nblue\t"<<score<<"\n";
+  
   }
 
+    return score ;
+  }
+double getWeight(){
+return weight_;
+}
 protected:
   double weight_;
 };
@@ -110,7 +122,27 @@ public:
   void takeTurn(uint32_t input_weight,
                 const std::vector<std::unique_ptr<Box>> &boxes)
   {
+       //selects one of the boxes with the currently smallest weight
+       int smallestIndex=smallestWeight(boxes);
+       if(smallestIndex>=0){
+       score_+=boxes[smallestIndex]->absorb(input_weight);
+         std::cout<<"\n smallest Index "<<smallestIndex<<"\t boxWei"<<boxes[smallestIndex]->getWeight()<<" input "<<input_weight<<"\n";
+       }else
+       {
+         std::cout<<"\n bug\n";
+       }
     // TODO
+  }
+  int smallestWeight(const std::vector<std::unique_ptr<Box>> &boxes){//return the index of the box with smallest weight
+  double maxValue= std::numeric_limits<double>::max();
+  int smallestIndex=-1;
+   for(size_t i=0;i<boxes.size();i++){
+      if(boxes[i]->getWeight()<maxValue){
+        smallestIndex=i;
+        maxValue=boxes[i]->getWeight();
+      }
+   }
+   return smallestIndex;
   }
   double getScore() const { return score_; }
 
@@ -126,16 +158,31 @@ std::pair<double, double> play(const std::vector<uint32_t> &input_weights)
   boxes.emplace_back(Box::makeBlueBox(0.2));
   boxes.emplace_back(Box::makeBlueBox(0.3));
  
-   std::vector<uint32_t> inputs{0,1,2,3,5};
- boxes[0]->absorb(inputs[0]);
- boxes[0]->absorb(inputs[1]);
+
   // TODO
   Player player_A,player_B;
+  for(size_t i=0;i<input_weights.size();i++){
+  if(i%2==0)
+    player_A.takeTurn(input_weights[i],boxes);
+    else 
+    player_B.takeTurn(input_weights[i],boxes);
+  }
   std::cout << "Scores: player A " << player_A.getScore() << ", player B "
             << player_B.getScore() << std::endl;
   return std::make_pair(player_A.getScore(), player_B.getScore());
 }
+uint32_t absorption(const std::vector<uint32_t> &input_weights,bool _isGreen)
+{
 
+   Box tmpBox(0.0);
+   tmpBox.isGreen=_isGreen;
+    for(auto i:input_weights)
+  {
+    tmpBox.absorb(i);
+  }
+ 
+  return tmpBox.getWeight();
+}
 TEST_CASE("Final scores for first 4 Fibonacci numbers", "[fibonacci4]")
 {
   std::vector<uint32_t> inputs{1, 1, 2, 3};
@@ -154,10 +201,20 @@ TEST_CASE("Final scores for first 8 Fibonacci numbers", "[fibonacci8]")
 
 TEST_CASE("Test absorption of green box", "[green]")
 {
+  std::vector<uint32_t> inputs{1, 1, 2, 3, 5, 8, 13, 21};
+    bool isGreen=true;
+    auto result = absorption(inputs,isGreen);
+
+   REQUIRE(result== 54.0);
   // TODO
 }
 
 TEST_CASE("Test absorption of blue box", "[blue]")
 {
-  // TODO
+    std::vector<uint32_t> inputs{1, 1, 2, 3, 5, 8, 13, 21};
+    bool isGreen=false;
+    auto result = absorption(inputs,isGreen);
+
+
+   REQUIRE(result== 54.0);
 }
